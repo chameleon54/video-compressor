@@ -1,2 +1,2 @@
 # video-compressor
-a simple video compressor
+a simple video compressor using FFMPEG 
