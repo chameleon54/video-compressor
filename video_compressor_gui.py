@@ -4,6 +4,29 @@ import subprocess
 import os
 import re
 import threading
+from PIL import Image, ImageTk
+import cv2
+
+def show_video_thumbnail(video_path):
+    try:
+        cap = cv2.VideoCapture(video_path)
+        success, frame = cap.read()
+        cap.release()
+
+        if success:
+            # Resize frame to fit window (keep aspect ratio)
+            frame = cv2.resize(frame, (320, 180))
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            img = Image.fromarray(frame_rgb)
+            img_tk = ImageTk.PhotoImage(img)
+            thumbnail_image_label.configure(image=img_tk)
+            thumbnail_image_label.image = img_tk  # Keep reference!
+        else:
+            thumbnail_image_label.configure(image='', text="Preview not available")
+
+    except Exception as e:
+        thumbnail_image_label.configure(image='', text="Error loading preview")
+
 
 def update_estimated_size():
     file_path = input_file_var.get()
@@ -123,7 +146,7 @@ def browse_file():
     )
     input_file_var.set(file_path)
     update_estimated_size()
-
+    show_video_thumbnail(file_path)
 #gui
 root = tk.Tk()
 root.title("Video Compressor with Progress Bar")
@@ -133,6 +156,12 @@ input_file_var = tk.StringVar()
 tk.Label(root, text="Select Video File:").pack(pady=5)
 tk.Entry(root, textvariable=input_file_var, width=50).pack(padx=10)
 tk.Button(root, text="Browse", command=browse_file).pack(pady=5)
+
+preview_label = tk.Label(root, text="Video Preview")
+preview_label.pack(pady=10)
+
+thumbnail_image_label = tk.Label(root)  
+thumbnail_image_label.pack()
 
 tk.Label(root, text="Compression Quality (CRF):").pack(pady=5)
 crf_slider = tk.Scale(root, from_=18, to=35, orient="horizontal", command=lambda value: update_estimated_size())
