@@ -148,6 +148,7 @@ def browse_file():
     update_estimated_size()
     show_video_thumbnail(file_path)
 #gui
+#Todo:make it more beautiful
 root = tk.Tk()
 root.title("Video Compressor with Progress Bar")
 
