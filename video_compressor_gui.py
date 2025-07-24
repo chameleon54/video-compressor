@@ -5,6 +5,40 @@ import os
 import re
 import threading
 
+def update_estimated_size():
+    file_path = input_file_var.get()
+    crf = crf_slider.get()
+    if os.path.isfile(file_path):
+        try:
+            estimated_mb = estimate_output_size(file_path, crf)
+            estimated_label.config(text=f"Estimated output size: ~{estimated_mb} MB")
+        except Exception:
+            estimated_label.config(text="Estimated output size: -")
+    else:
+        estimated_label.config(text="Estimated output size: -")
+
+def estimate_output_size(input_path, crf):
+    size_bytes = os.path.getsize(input_path)
+    size_mb = size_bytes / (1024 * 1024)
+
+    
+    if crf <= 20:
+        ratio = 0.75
+    elif crf <= 23:
+        ratio = 0.65
+    elif crf <= 26:
+        ratio = 0.5
+    elif crf <= 30:
+        ratio = 0.4
+    elif crf <= 33:
+        ratio = 0.3
+    else:
+        ratio = 0.2
+
+    estimated_mb = size_mb * ratio
+    return round(estimated_mb, 2)
+
+
 def get_video_duration(filename):
     
     try:
@@ -43,13 +77,13 @@ def compress_video():
 
     base, ext = os.path.splitext(input_path)
     output_path = base + f"_compressed_crf{crf_value}" + ext
-
+    
     command = [
         'ffmpeg', '-i', input_path,
         '-vcodec', 'libx264', '-crf', str(crf_value),
         '-y', output_path  #Overwrite without asking
     ]
-
+    
     def run_ffmpeg():
         try:
             process = subprocess.Popen(
@@ -88,6 +122,7 @@ def browse_file():
         filetypes=[("Video Files", "*.mp4 *.mov *.avi *.mkv"), ("All files", "*.*")]
     )
     input_file_var.set(file_path)
+    update_estimated_size()
 
 #gui
 root = tk.Tk()
@@ -100,9 +135,12 @@ tk.Entry(root, textvariable=input_file_var, width=50).pack(padx=10)
 tk.Button(root, text="Browse", command=browse_file).pack(pady=5)
 
 tk.Label(root, text="Compression Quality (CRF):").pack(pady=5)
-crf_slider = tk.Scale(root, from_=18, to=35, orient="horizontal")
+crf_slider = tk.Scale(root, from_=18, to=35, orient="horizontal", command=lambda value: update_estimated_size())
 crf_slider.set(28)
 crf_slider.pack()
+
+estimated_label = tk.Label(root, text="Estimated output size: -")
+estimated_label.pack()
 
 tk.Button(root, text="Compress Video", command=compress_video, bg="green", fg="white").pack(pady=10)
 
