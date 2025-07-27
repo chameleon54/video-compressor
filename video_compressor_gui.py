@@ -6,6 +6,8 @@ import re
 import threading
 from PIL import Image, ImageTk
 import cv2
+from tkinterdnd2 import TkinterDnD, DND_FILES
+
 
 def show_video_thumbnail(video_path):
     try:
@@ -147,9 +149,20 @@ def browse_file():
     input_file_var.set(file_path)
     update_estimated_size()
     show_video_thumbnail(file_path)
+
+def on_drop(event):
+    file_path = event.data.strip('{}')  # Remove curly braces for paths with spaces
+    input_file_var.set(file_path)
+    update_estimated_size()
+    show_video_thumbnail(file_path)
+
+   
+
 #gui
 #Todo:make it more beautiful
-root = tk.Tk()
+# root = tk.Tk()
+root = TkinterDnD.Tk()
+
 root.title("Video Compressor with Progress Bar")
 
 input_file_var = tk.StringVar()
@@ -157,7 +170,9 @@ input_file_var = tk.StringVar()
 tk.Label(root, text="Select Video File:").pack(pady=5)
 tk.Entry(root, textvariable=input_file_var, width=50).pack(padx=10)
 tk.Button(root, text="Browse", command=browse_file).pack(pady=5)
-
+tk.Label(root, text="(You can also drag and drop a video file here)", fg="gray").pack(pady=(0, 10))
+root.drop_target_register(DND_FILES)
+root.dnd_bind('<<Drop>>', on_drop)
 preview_label = tk.Label(root, text="Video Preview")
 preview_label.pack(pady=10)
 
