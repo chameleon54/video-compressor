@@ -8,6 +8,7 @@ from PIL import Image, ImageTk
 import cv2
 from tkinterdnd2 import TkinterDnD, DND_FILES
 
+video_files = []
 
 def show_video_thumbnail(video_path):
     try:
@@ -16,37 +17,34 @@ def show_video_thumbnail(video_path):
         cap.release()
 
         if success:
-            # Resize frame to fit window (keep aspect ratio)
             frame = cv2.resize(frame, (320, 180))
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(frame_rgb)
             img_tk = ImageTk.PhotoImage(img)
             thumbnail_image_label.configure(image=img_tk)
-            thumbnail_image_label.image = img_tk  # Keep reference!
+            thumbnail_image_label.image = img_tk
         else:
             thumbnail_image_label.configure(image='', text="Preview not available")
-
-    except Exception as e:
+    except Exception:
         thumbnail_image_label.configure(image='', text="Error loading preview")
 
-
-def update_estimated_size():
-    file_path = input_file_var.get()
+def update_estimated_size(file_path=None):
+    if not file_path:
+        file_path = video_files[-1] if video_files else None
     crf = crf_slider.get()
-    if os.path.isfile(file_path):
+    if file_path and os.path.isfile(file_path):
         try:
             estimated_mb = estimate_output_size(file_path, crf)
-            estimated_label.config(text=f"Estimated output size: ~{estimated_mb} MB")
+            estimated_label.config(text=f"Estimated size (latest): ~{estimated_mb} MB")
         except Exception:
-            estimated_label.config(text="Estimated output size: -")
+            estimated_label.config(text="Estimated size: -")
     else:
-        estimated_label.config(text="Estimated output size: -")
+        estimated_label.config(text="Estimated size: -")
 
 def estimate_output_size(input_path, crf):
     size_bytes = os.path.getsize(input_path)
     size_mb = size_bytes / (1024 * 1024)
 
-    
     if crf <= 20:
         ratio = 0.75
     elif crf <= 23:
@@ -63,9 +61,7 @@ def estimate_output_size(input_path, crf):
     estimated_mb = size_mb * ratio
     return round(estimated_mb, 2)
 
-
 def get_video_duration(filename):
-    
     try:
         result = subprocess.run(
             ['ffprobe', '-v', 'error', '-show_entries',
@@ -80,37 +76,33 @@ def get_video_duration(filename):
         return None
 
 def parse_time(time_str):
-    
     h, m, s = re.split('[:.]', time_str)[:3]
     return int(h) * 3600 + int(m) * 60 + int(s)
 
 def compress_video():
-    input_path = input_file_var.get()
+    if not video_files:
+        messagebox.showerror("Error", "No videos selected.")
+        return
+
     crf_value = crf_slider.get()
 
-    if not input_path:
-        messagebox.showerror("Error", "Please select a video file.")
-        return
+    def compress_all():
+        total = len(video_files)
+        for i, input_path in enumerate(video_files):
+            progress_label.config(text=f"Compressing ({i+1}/{total}): {os.path.basename(input_path)}")
+            duration = get_video_duration(input_path)
+            if not duration:
+                continue
 
-    duration = get_video_duration(input_path)
-    if not duration:
-        messagebox.showerror("Error", "Could not get video duration.")
-        return
+            base, ext = os.path.splitext(input_path)
+            output_path = base + f"_compressed_crf{crf_value}" + ext
 
-    progress_bar["value"] = 0
-    progress_label.config(text="Starting compression...")
+            command = [
+                'ffmpeg', '-i', input_path,
+                '-vcodec', 'libx264', '-crf', str(crf_value),
+                '-y', output_path
+            ]
 
-    base, ext = os.path.splitext(input_path)
-    output_path = base + f"_compressed_crf{crf_value}" + ext
-    
-    command = [
-        'ffmpeg', '-i', input_path,
-        '-vcodec', 'libx264', '-crf', str(crf_value),
-        '-y', output_path  #Overwrite without asking
-    ]
-    
-    def run_ffmpeg():
-        try:
             process = subprocess.Popen(
                 command,
                 stdout=subprocess.PIPE,
@@ -125,69 +117,66 @@ def compress_video():
                         current_time = parse_time(match.group(1))
                         progress = (current_time / duration) * 100
                         progress_bar["value"] = progress
-                        progress_label.config(text=f"Compressing... {int(progress)}%")
+                        progress_label.config(text=f"{os.path.basename(input_path)}: {int(progress)}%")
 
             process.wait()
-            if process.returncode == 0:
-                progress_bar["value"] = 100
-                progress_label.config(text="Compression complete!")
-                messagebox.showinfo("Success", f"Video compressed!\nSaved as:\n{output_path}")
-            else:
-                raise subprocess.CalledProcessError(process.returncode, command)
+            progress_bar["value"] = 0
 
-        except Exception as e:
-            progress_label.config(text="Compression failed.")
-            messagebox.showerror("Error", f"Compression failed:\n{e}")
+        progress_label.config(text="All videos compressed.")
+        messagebox.showinfo("Success", f"Compressed {total} video(s).")
 
-    
-    threading.Thread(target=run_ffmpeg).start()
+    threading.Thread(target=compress_all).start()
 
 def browse_file():
-    file_path = filedialog.askopenfilename(
+    file_paths = filedialog.askopenfilenames(
         filetypes=[("Video Files", "*.mp4 *.mov *.avi *.mkv"), ("All files", "*.*")]
     )
-    input_file_var.set(file_path)
-    update_estimated_size()
-    show_video_thumbnail(file_path)
+    add_files(file_paths)
 
 def on_drop(event):
-    file_path = event.data.strip('{}')  # Remove curly braces for paths with spaces
-    input_file_var.set(file_path)
-    update_estimated_size()
-    show_video_thumbnail(file_path)
+    file_paths = root.tk.splitlist(event.data)
+    add_files(file_paths)
 
-   
+def add_files(file_paths):
+    for path in file_paths:
+        if path not in video_files:
+            video_files.append(path)
+            file_listbox.insert(tk.END, os.path.basename(path))
+    if video_files:
+        show_video_thumbnail(video_files[-1])
+        update_estimated_size(video_files[-1])
+        file_count_label.config(text=f"{len(video_files)} video(s) selected")
 
-#gui
-#Todo:make it more beautiful
-# root = tk.Tk()
+# GUI
 root = TkinterDnD.Tk()
+root.title("Batch Video Compressor")
 
-root.title("Video Compressor with Progress Bar")
+tk.Label(root, text="Drop or Select Video Files").pack(pady=5)
+tk.Button(root, text="Browse", command=browse_file).pack()
 
-input_file_var = tk.StringVar()
-
-tk.Label(root, text="Select Video File:").pack(pady=5)
-tk.Entry(root, textvariable=input_file_var, width=50).pack(padx=10)
-tk.Button(root, text="Browse", command=browse_file).pack(pady=5)
-tk.Label(root, text="(You can also drag and drop a video file here)", fg="gray").pack(pady=(0, 10))
 root.drop_target_register(DND_FILES)
 root.dnd_bind('<<Drop>>', on_drop)
-preview_label = tk.Label(root, text="Video Preview")
-preview_label.pack(pady=10)
 
-thumbnail_image_label = tk.Label(root)  
+file_listbox = tk.Listbox(root, width=50, height=6)
+file_listbox.pack(pady=5)
+
+file_count_label = tk.Label(root, text="0 video(s) selected")
+file_count_label.pack()
+
+preview_label = tk.Label(root, text="Preview (last selected):")
+preview_label.pack()
+thumbnail_image_label = tk.Label(root)
 thumbnail_image_label.pack()
 
 tk.Label(root, text="Compression Quality (CRF):").pack(pady=5)
-crf_slider = tk.Scale(root, from_=18, to=35, orient="horizontal", command=lambda value: update_estimated_size())
+crf_slider = tk.Scale(root, from_=18, to=35, orient="horizontal", command=lambda v: update_estimated_size())
 crf_slider.set(28)
 crf_slider.pack()
 
-estimated_label = tk.Label(root, text="Estimated output size: -")
+estimated_label = tk.Label(root, text="Estimated size: -")
 estimated_label.pack()
 
-tk.Button(root, text="Compress Video", command=compress_video, bg="green", fg="white").pack(pady=10)
+tk.Button(root, text="Compress All Videos", command=compress_video, bg="green", fg="white").pack(pady=10)
 
 progress_bar = ttk.Progressbar(root, orient="horizontal", length=400, mode="determinate")
 progress_bar.pack(pady=10)
