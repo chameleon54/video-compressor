@@ -146,6 +146,26 @@ def add_files(file_paths):
         show_video_thumbnail(video_files[-1])
         update_estimated_size(video_files[-1])
         file_count_label.config(text=f"{len(video_files)} video(s) selected")
+def remove_selected():
+    selected_indices = list(file_listbox.curselection())
+    for i in reversed(selected_indices):
+        del video_files[i]
+        file_listbox.delete(i)
+    file_count_label.config(text=f"{len(video_files)} video(s) selected")
+    if video_files:
+        show_video_thumbnail(video_files[-1])
+        update_estimated_size(video_files[-1])
+    else:
+        thumbnail_image_label.configure(image='', text='')
+        estimated_label.config(text="Estimated size: -")
+
+def remove_all():
+    video_files.clear()
+    file_listbox.delete(0, tk.END)
+    file_count_label.config(text="0 video(s) selected")
+    thumbnail_image_label.configure(image='', text='')
+    estimated_label.config(text="Estimated size: -")
+
 
 # GUI
 root = TkinterDnD.Tk()
@@ -159,6 +179,13 @@ root.dnd_bind('<<Drop>>', on_drop)
 
 file_listbox = tk.Listbox(root, width=50, height=6)
 file_listbox.pack(pady=5)
+# Buttons to remove selected or all files
+btn_frame = tk.Frame(root)
+btn_frame.pack(pady=(0, 10))
+
+tk.Button(btn_frame, text="Remove Selected", command=lambda: remove_selected()).pack(side=tk.LEFT, padx=5)
+tk.Button(btn_frame, text="Remove All", command=lambda: remove_all()).pack(side=tk.LEFT, padx=5)
+
 
 file_count_label = tk.Label(root, text="0 video(s) selected")
 file_count_label.pack()
