@@ -86,8 +86,11 @@ def compress_video():
 
     crf_value = crf_slider.get()
 
+    compress_btn.config(state="disabled")
+
     def compress_all():
         total = len(video_files)
+        threads = thread_slider.get()
         for i, input_path in enumerate(video_files):
             progress_label.config(text=f"Compressing ({i+1}/{total}): {os.path.basename(input_path)}")
             duration = get_video_duration(input_path)
@@ -100,6 +103,7 @@ def compress_video():
             command = [
                 'ffmpeg', '-i', input_path,
                 '-vcodec', 'libx264', '-crf', str(crf_value),
+                '-threads', str(threads),
                 '-y', output_path
             ]
 
@@ -124,6 +128,8 @@ def compress_video():
 
         progress_label.config(text="All videos compressed.")
         messagebox.showinfo("Success", f"Compressed {total} video(s).")
+
+        compress_btn.config(state="normal")
 
     threading.Thread(target=compress_all).start()
 
@@ -199,11 +205,16 @@ tk.Label(root, text="Compression Quality (CRF):").pack(pady=5)
 crf_slider = tk.Scale(root, from_=18, to=35, orient="horizontal", command=lambda v: update_estimated_size())
 crf_slider.set(28)
 crf_slider.pack()
+tk.Label(root, text="Max CPU Threads:").pack(pady=5)
+thread_slider = tk.Scale(root, from_=1, to=os.cpu_count(), orient="horizontal")
+thread_slider.set(min(2, os.cpu_count()))
+thread_slider.pack()
 
 estimated_label = tk.Label(root, text="Estimated size: -")
 estimated_label.pack()
 
-tk.Button(root, text="Compress All Videos", command=compress_video, bg="green", fg="white").pack(pady=10)
+compress_btn = tk.Button(root, text="Compress All Videos", command=compress_video, bg="green", fg="white")
+compress_btn.pack(pady=10)
 
 progress_bar = ttk.Progressbar(root, orient="horizontal", length=400, mode="determinate")
 progress_bar.pack(pady=10)
