@@ -1,0 +1,41 @@
+body {
+    font-family: Arial;
+    max-width: 900px;
+    margin: auto;
+    padding: 30px;
+}
+
+#drop-zone {
+    border: 3px dashed #555;
+    padding: 30px;
+    text-align: center;
+    color: #888;
+    cursor: pointer;
+    margin-bottom: 20px;
+}
+
+.file-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+}
+
+.thumbnail {
+    width: 150px;
+    height: 90px;
+    background: #222;
+    object-fit: cover;
+}
+
+.progress-container {
+    width: 100%;
+}
+
+.progress-bar {
+    height: 8px;
+    background: green;
+    width: 0%;
+}

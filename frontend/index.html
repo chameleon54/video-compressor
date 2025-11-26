@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Web Video Compressor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h2>🗜 Web Video Compressor</h2>
+
+<div id="drop-zone">Drop videos here or click to browse</div>
+<input type="file" id="file-input" multiple accept="video/*" style="display:none">
+
+<div id="file-list"></div>
+
+<div class="controls">
+    <label>CRF:</label>
+    <input type="range" id="crf" min="18" max="35" value="28">
+
+    <label>Threads:</label>
+    <input type="number" id="threads" value="2" min="1" max="16">
+</div>
+
+<button id="start-btn">Start Compression</button>
+
+<script src="script.js"></script>
+</body>
+</html>
